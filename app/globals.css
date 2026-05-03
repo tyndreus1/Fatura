@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #CC1A1A;
+  --brand-dark: #991111;
+  --brand-light: #FEE2E2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #F8F9FB;
+  color: #111827;
+}
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Focus ring */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(204, 26, 26, 0.25);
+}
+
+/* Input base */
+.input-base {
+  @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm
+         placeholder-gray-400 transition-all duration-150
+         focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20;
+}
+
+/* Button base */
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm
+         font-semibold text-white shadow-sm transition-all duration-150
+         hover:bg-brand-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5
+         text-sm font-semibold text-gray-700 shadow-sm transition-all duration-150
+         hover:bg-gray-50 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply inline-flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2.5 text-sm
+         font-semibold text-red-700 transition-all duration-150
+         hover:bg-red-100 active:scale-95;
+}
+
+/* Card */
+.card {
+  @apply rounded-xl border border-gray-100 bg-white shadow-sm;
+}
+
+/* Section heading */
+.section-title {
+  @apply text-xs font-bold uppercase tracking-wider text-gray-400 mb-3;
+}
+
+/* Badge */
+.badge-proforma {
+  @apply inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5
+         text-xs font-semibold text-blue-700;
+}
+.badge-commercial {
+  @apply inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5
+         text-xs font-semibold text-emerald-700;
+}
+.badge-eur {
+  @apply inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5
+         text-xs font-semibold text-amber-700;
+}
+.badge-usd {
+  @apply inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5
+         text-xs font-semibold text-green-700;
+}
