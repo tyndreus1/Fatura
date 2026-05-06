@@ -20,7 +20,7 @@ function emptyItem(): InvoiceItem {
 export default function InvoiceForm({ existing, mode }: Props) {
   const router = useRouter()
 
-  // ── Core state ────────────────────────────────────────────────────────────
+  // ── Core state ────────────────────────────────────────────────────
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(existing?.invoice_type ?? 'proforma')
   const [currency, setCurrency]       = useState<Currency>(existing?.currency ?? 'EUR')
   const [bankAccount, setBankAccount] = useState<BankAccountKey>(existing?.bank_account ?? 'akbank_eur')
@@ -56,14 +56,14 @@ export default function InvoiceForm({ existing, mode }: Props) {
   const [error,    setError]    = useState('')
   const [termsOpen,setTermsOpen]= useState(true)
 
-  // ── Fetch next invoice number on create ───────────────────────────────────
+  // ── Fetch next invoice number on create ───────────────────────────────────────
   useEffect(() => {
     if (mode === 'create') {
       fetch('/api/next-number').then(r => r.json()).then(d => setInvoiceNumber(d.number))
     }
   }, [mode])
 
-  // ── Auto-select bank when currency changes ────────────────────────────────
+  // ── Auto-select bank when currency changes ──────────────────────────────────
   useEffect(() => {
     const current = BANK_ACCOUNTS[bankAccount]
     if (current.currency !== currency) {
@@ -71,7 +71,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
     }
   }, [currency]) // eslint-disable-line
 
-  // ── Item helpers ──────────────────────────────────────────────────────────
+  // ── Item helpers ──────────────────────────────────────────────────────────────
   const updateItem = useCallback((id: string, field: keyof InvoiceItem, raw: string) => {
     setItems(prev => prev.map(item => {
       if (item.id !== id) return item
@@ -91,7 +91,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
   const addItem    = () => setItems(prev => [...prev, emptyItem()])
   const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id))
 
-  // ── Totals ────────────────────────────────────────────────────────────────
+  // ── Totals ────────────────────────────────────────────────────────────────────
   const { subtotal, grandTotal } = calcTotals(
     items,
     hasShipment ? shipmentCost : 0,
@@ -103,8 +103,8 @@ export default function InvoiceForm({ existing, mode }: Props) {
                     (hasAdvance  && advancePayment > 0)
   const S = currency === 'EUR' ? '€' : '$'
 
-  // ── Save ──────────────────────────────────────────────────────────────────
-  async function handleSave(andDownload = false) {
+  // ── Save ────────────────────────────────────────────────────────────────────────
+  async function handleSave() {
     if (!customerName.trim()) { setError('Müşteri adı zorunludur.'); return }
     if (!invoiceDate)         { setError('Tarih zorunludur.'); return }
     if (items.some(i => !i.description.trim())) {
@@ -142,19 +142,15 @@ export default function InvoiceForm({ existing, mode }: Props) {
         const res = await fetch(`/api/invoices/${existing!.id}`, { method: 'PUT', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
         saved = await res.json()
       }
-
-      if (andDownload) {
-        window.open(`/api/invoices/${saved.id}/pdf`, '_blank')
-      }
       router.push(`/invoices/${saved.id}`)
-    } catch (e) {
+    } catch {
       setError('Kayıt sırasında hata oluştu.')
     } finally {
       setSaving(false)
     }
   }
 
-  // ── UI helpers ────────────────────────────────────────────────────────────
+  // ── UI helpers ──────────────────────────────────────────────────────────────
   const typeBtn = (t: InvoiceType, label: string) => (
     <button
       type="button"
@@ -198,7 +194,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
         </button>
         <div>
           <h1 className="text-xl font-bold text-gray-900">
-            {mode === 'create' ? 'Yeni Fatura Oluştur' : 'Faturayı Düzenle'}
+            {mode === 'create' ? 'Yeni Fatura Oluştur' : 'Faturasını Düzenle'}
           </h1>
           {invoiceNumber && <p className="text-sm text-gray-400">{invoiceNumber}</p>}
         </div>
@@ -584,21 +580,12 @@ export default function InvoiceForm({ existing, mode }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => handleSave(false)}
-            disabled={saving}
-            className="btn-secondary"
-          >
-            <Save size={16} />
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave(true)}
+            onClick={handleSave}
             disabled={saving}
             className="btn-primary"
           >
-            <FileDown size={16} />
-            {saving ? 'İşleniyor…' : 'Kaydet & PDF İndir'}
+            <Save size={16} />
+            {saving ? 'Kaydediliyor…' : 'Kaydet & Görüntüle'}
           </button>
         </div>
 
