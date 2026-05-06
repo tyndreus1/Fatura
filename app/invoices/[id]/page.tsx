@@ -4,7 +4,8 @@ import { getInvoice } from '@/lib/db'
 import Navbar from '@/components/Navbar'
 import InvoicePreview from '@/components/InvoicePreview'
 import DeleteButton from './DeleteButton'
-import { FileDown, Pencil, ArrowLeft } from 'lucide-react'
+import PDFButton from '@/components/PDFButton'
+import { Pencil, ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,14 +38,7 @@ export default async function ViewInvoicePage({ params }: Props) {
             <Link href={`/invoices/${invoice.id}/edit`} className="btn-secondary">
               <Pencil size={15} /> Düzenle
             </Link>
-            <a
-              href={`/api/invoices/${invoice.id}/pdf`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-primary"
-            >
-              <FileDown size={15} /> PDF İndir
-            </a>
+            <PDFButton invoice={invoice} />
             <DeleteButton id={invoice.id} />
           </div>
         </div>
