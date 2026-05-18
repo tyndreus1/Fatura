@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import type { Invoice, InvoiceFormData, InvoiceRow } from './types'
 
-const DATA_DIR = path.join(process.cwd(), 'data')
+const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data')
 const DB_PATH = path.join(DATA_DIR, 'invoices.db')
 
 let _db: Database.Database | null = null
@@ -55,7 +55,7 @@ function rowToInvoice(row: InvoiceRow): Invoice {
   } as Invoice
 }
 
-// ─── Invoice number ───────────────────────────────────────────────────────────
+// ─── Invoice number ──────────────────────────────────────────────────────────────
 
 export function peekNextNumber(): string {
   const db = getDb()
@@ -78,14 +78,12 @@ export function consumeNextNumber(): string {
   return `ALP${year}${String(row.seq).padStart(4, '0')}`
 }
 
-// ─── CRUD ─────────────────────────────────────────────────────────────────────
+// ─── CRUD ─────────────────────────────────────────────────────────────────────────
 
 export function listInvoices(): Invoice[] {
   const db = getDb()
   const rows = db
-    .prepare(
-      `SELECT * FROM invoices ORDER BY created_at DESC`
-    )
+    .prepare(`SELECT * FROM invoices ORDER BY created_at DESC`)
     .all() as InvoiceRow[]
   return rows.map(rowToInvoice)
 }
