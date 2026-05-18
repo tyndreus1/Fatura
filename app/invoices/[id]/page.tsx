@@ -4,7 +4,7 @@ import { getInvoice } from '@/lib/db'
 import Navbar from '@/components/Navbar'
 import InvoicePreview from '@/components/InvoicePreview'
 import DeleteButton from './DeleteButton'
-import PDFButton from '@/components/PDFButton'
+import PrintButton from '@/components/PrintButton'
 import { Pencil, ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -18,11 +18,13 @@ export default async function ViewInvoicePage({ params }: Props) {
 
   return (
     <div className="min-h-screen">
-      <Navbar />
+      <div className="print:hidden">
+        <Navbar />
+      </div>
       <div className="mx-auto max-w-4xl px-4 py-8">
 
-        {/* Toolbar */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        {/* Toolbar — gizlenir yazdirmada */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center gap-3">
             <Link href="/invoices" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100">
               <ArrowLeft size={18} />
@@ -38,12 +40,12 @@ export default async function ViewInvoicePage({ params }: Props) {
             <Link href={`/invoices/${invoice.id}/edit`} className="btn-secondary">
               <Pencil size={15} /> Düzenle
             </Link>
-            <PDFButton invoice={invoice} />
+            <PrintButton />
             <DeleteButton id={invoice.id} />
           </div>
         </div>
 
-        {/* Preview */}
+        {/* Fatura — print modunda tam sayfa */}
         <InvoicePreview invoice={invoice} />
       </div>
     </div>

@@ -85,3 +85,14 @@ html { scroll-behavior: smooth; }
   @apply inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5
          text-xs font-semibold text-green-700;
 }
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+  }
+  @page {
+    margin: 10mm;
+    size: A4;
+  }
+}

@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^3.4.4",
     "autoprefixer": "^10.4.20",
     "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
