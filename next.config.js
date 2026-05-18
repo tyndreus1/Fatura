@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['better-sqlite3', '@react-pdf/renderer'],
+  serverExternalPackages: ['better-sqlite3'],
 }
 
 module.exports = nextConfig
