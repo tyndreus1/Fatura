@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: alpress-fatura
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: alpress-fatura-db
+      mountPath: /data
+      sizeGB: 1
