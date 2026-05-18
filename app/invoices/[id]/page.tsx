@@ -4,7 +4,7 @@ import { getInvoice } from '@/lib/db'
 import Navbar from '@/components/Navbar'
 import InvoicePreview from '@/components/InvoicePreview'
 import DeleteButton from './DeleteButton'
-import PrintButton from '@/components/PrintButton'
+import PDFExportButton from '@/components/PDFExportButton'
 import { Pencil, ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -18,13 +18,11 @@ export default async function ViewInvoicePage({ params }: Props) {
 
   return (
     <div className="min-h-screen">
-      <div className="print:hidden">
-        <Navbar />
-      </div>
+      <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-8">
 
-        {/* Toolbar — gizlenir yazdirmada */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
+        {/* Toolbar */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/invoices" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100">
               <ArrowLeft size={18} />
@@ -40,13 +38,15 @@ export default async function ViewInvoicePage({ params }: Props) {
             <Link href={`/invoices/${invoice.id}/edit`} className="btn-secondary">
               <Pencil size={15} /> Düzenle
             </Link>
-            <PrintButton />
+            <PDFExportButton invoiceNumber={invoice.invoice_number} />
             <DeleteButton id={invoice.id} />
           </div>
         </div>
 
-        {/* Fatura — print modunda tam sayfa */}
-        <InvoicePreview invoice={invoice} />
+        {/* Fatura — id ile yakalanıyor */}
+        <div id="invoice-preview">
+          <InvoicePreview invoice={invoice} />
+        </div>
       </div>
     </div>
   )
