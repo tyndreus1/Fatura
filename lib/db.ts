@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
-import type { Invoice, InvoiceFormData, InvoiceRow } from './types'
+import type { Invoice, InvoiceFormData, InvoiceRow, Customer } from './types'
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data')
 const DB_PATH = path.join(DATA_DIR, 'invoices.db')
@@ -43,6 +43,15 @@ function getDb(): Database.Database {
       year INTEGER PRIMARY KEY,
       seq  INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      address    TEXT    DEFAULT '',
+      contact    TEXT    DEFAULT '',
+      created_at TEXT    DEFAULT (datetime('now')),
+      updated_at TEXT    DEFAULT (datetime('now'))
+    );
   `)
 
   return _db
@@ -55,7 +64,7 @@ function rowToInvoice(row: InvoiceRow): Invoice {
   } as Invoice
 }
 
-// ─── Invoice number ──────────────────────────────────────────────────────────────
+// ─── Invoice number ───────────────────────────────────────────────────────────
 
 export function peekNextNumber(): string {
   const db = getDb()
@@ -78,7 +87,48 @@ export function consumeNextNumber(): string {
   return `ALP${year}${String(row.seq).padStart(4, '0')}`
 }
 
-// ─── CRUD ─────────────────────────────────────────────────────────────────────────
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+export function listCustomers(): Customer[] {
+  const db = getDb()
+  return db.prepare('SELECT * FROM customers ORDER BY name').all() as Customer[]
+}
+
+export function upsertCustomer(name: string, address: string, contact: string): void {
+  if (!name.trim()) return
+  const db = getDb()
+  db.prepare(`
+    INSERT INTO customers (name, address, contact)
+    VALUES (?, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET
+      address    = CASE WHEN excluded.address != '' THEN excluded.address ELSE address END,
+      contact    = CASE WHEN excluded.contact != '' THEN excluded.contact ELSE contact END,
+      updated_at = datetime('now')
+  `).run(name.trim(), address.trim(), contact.trim())
+}
+
+export function updateCustomer(
+  id: number,
+  data: { name?: string; address?: string; contact?: string }
+): Customer | null {
+  const db = getDb()
+  const existing = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Customer | undefined
+  if (!existing) return null
+  const merged = { ...existing, ...data }
+  db.prepare(`
+    UPDATE customers SET name = ?, address = ?, contact = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(merged.name, merged.address, merged.contact, id)
+  return db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Customer
+}
+
+export function deleteCustomer(id: number): boolean {
+  const db = getDb()
+  const result = db.prepare('DELETE FROM customers WHERE id = ?').run(id)
+  return result.changes > 0
+}
+
+// ─── Invoice CRUD ─────────────────────────────────────────────────────────────
 
 export function listInvoices(): Invoice[] {
   const db = getDb()
@@ -113,6 +163,7 @@ export function createInvoice(data: InvoiceFormData): Invoice {
     ...data,
     items: JSON.stringify(data.items),
   })
+  upsertCustomer(data.customer_name, data.customer_address ?? '', data.customer_contact ?? '')
   return getInvoice(result.lastInsertRowid as number)!
 }
 
@@ -144,6 +195,7 @@ export function updateInvoice(id: number, data: Partial<InvoiceFormData>): Invoi
     WHERE id = @id
   `).run({ ...merged, items: JSON.stringify(merged.items), id })
 
+  upsertCustomer(merged.customer_name, merged.customer_address ?? '', merged.customer_contact ?? '')
   return getInvoice(id)
 }
 

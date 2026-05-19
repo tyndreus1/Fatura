@@ -37,3 +37,12 @@ export type InvoiceFormData = Omit<Invoice, 'id' | 'created_at' | 'updated_at'>
 export interface InvoiceRow extends Omit<Invoice, 'items'> {
   items: string
 }
+
+export interface Customer {
+  id: number
+  name: string
+  address: string
+  contact: string
+  created_at: string
+  updated_at: string
+}

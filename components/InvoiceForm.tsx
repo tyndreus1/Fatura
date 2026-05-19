@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Trash2, ChevronDown, ChevronUp, FileDown, Save, ArrowLeft,
+  Plus, Trash2, ChevronDown, ChevronUp, Save, ArrowLeft,
 } from 'lucide-react'
-import type { Invoice, InvoiceItem, InvoiceType, Currency, BankAccountKey } from '@/lib/types'
+import type { Invoice, InvoiceItem, InvoiceType, Currency, BankAccountKey, Customer } from '@/lib/types'
 import { BANK_ACCOUNTS, getBanksForCurrency, getDefaultBank } from '@/lib/bank-accounts'
 import { calcTotals, formatNumber, todayISO, newItemId } from '@/lib/utils'
 
@@ -52,9 +52,13 @@ export default function InvoiceForm({ existing, mode }: Props) {
   const [notes,        setNotes]        = useState(existing?.notes ?? '')
 
   // UI
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState('')
-  const [termsOpen,setTermsOpen]= useState(true)
+  const [saving,    setSaving]    = useState(false)
+  const [error,     setError]     = useState('')
+  const [termsOpen, setTermsOpen] = useState(true)
+
+  // Customer autocomplete
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
 
   // ── Fetch next invoice number on create ───────────────────────────────────────
   useEffect(() => {
@@ -63,6 +67,11 @@ export default function InvoiceForm({ existing, mode }: Props) {
     }
   }, [mode])
 
+  // ── Fetch customers for autocomplete ──────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {})
+  }, [])
+
   // ── Auto-select bank when currency changes ──────────────────────────────────
   useEffect(() => {
     const current = BANK_ACCOUNTS[bankAccount]
@@ -70,6 +79,19 @@ export default function InvoiceForm({ existing, mode }: Props) {
       setBankAccount(getDefaultBank(currency))
     }
   }, [currency]) // eslint-disable-line
+
+  // ── Customer autocomplete ─────────────────────────────────────────────────────
+  const filteredCustomers = customers.filter(c =>
+    customerName.trim().length > 0 &&
+    c.name.toLowerCase().includes(customerName.toLowerCase())
+  )
+
+  function selectCustomer(c: Customer) {
+    setCustomerName(c.name)
+    setCustomerAddress(c.address)
+    setCustomerContact(c.contact)
+    setShowCustomerSuggestions(false)
+  }
 
   // ── Item helpers ──────────────────────────────────────────────────────────────
   const updateItem = useCallback((id: string, field: keyof InvoiceItem, raw: string) => {
@@ -115,22 +137,22 @@ export default function InvoiceForm({ existing, mode }: Props) {
     setSaving(true)
 
     const payload = {
-      invoice_number:  invoiceNumber,
-      invoice_type:    invoiceType,
+      invoice_number:   invoiceNumber,
+      invoice_type:     invoiceType,
       currency,
-      bank_account:    bankAccount,
-      invoice_date:    invoiceDate,
-      customer_name:   customerName.trim(),
-      customer_address:customerAddress.trim(),
-      customer_contact:customerContact.trim(),
+      bank_account:     bankAccount,
+      invoice_date:     invoiceDate,
+      customer_name:    customerName.trim(),
+      customer_address: customerAddress.trim(),
+      customer_contact: customerContact.trim(),
       items,
-      shipment_cost:   hasShipment ? shipmentCost : 0,
-      discount:        hasDiscount ? discount      : 0,
-      advance_payment: hasAdvance  ? advancePayment: 0,
-      payment_term:    paymentTerm.trim(),
-      shipment_term:   shipmentTerm.trim(),
-      delivery_time:   deliveryTime.trim(),
-      notes:           notes.trim(),
+      shipment_cost:    hasShipment ? shipmentCost : 0,
+      discount:         hasDiscount ? discount      : 0,
+      advance_payment:  hasAdvance  ? advancePayment: 0,
+      payment_term:     paymentTerm.trim(),
+      shipment_term:    shipmentTerm.trim(),
+      delivery_time:    deliveryTime.trim(),
+      notes:            notes.trim(),
     }
 
     try {
@@ -151,7 +173,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
   }
 
   // ── UI helpers ──────────────────────────────────────────────────────────────
-  const typeBtn = (t: InvoiceType, label: string) => (
+  const typeBtn = (t: InvoiceType, labelText: string) => (
     <button
       type="button"
       onClick={() => setInvoiceType(t)}
@@ -161,7 +183,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
           : 'border-gray-200 bg-white text-gray-600 hover:border-brand-300 hover:text-brand-600'
       }`}
     >
-      {label}
+      {labelText}
     </button>
   )
 
@@ -254,12 +276,35 @@ export default function InvoiceForm({ existing, mode }: Props) {
           <div className="space-y-3">
             <div>
               {label('Firma / Kişi Adı', true)}
-              <input
-                className="input-base"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                placeholder="EMERALD JEWEL INDUSTRY INDIA LIMITED"
-              />
+              <div className="relative">
+                <input
+                  className="input-base"
+                  value={customerName}
+                  onChange={e => { setCustomerName(e.target.value); setShowCustomerSuggestions(true) }}
+                  onFocus={() => setShowCustomerSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 150)}
+                  placeholder="EMERALD JEWEL INDUSTRY INDIA LIMITED"
+                />
+                {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                  <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    {filteredCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => selectCustomer(c)}
+                        className="w-full border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-0 hover:bg-gray-50"
+                      >
+                        <span className="font-semibold text-gray-900">{c.name}</span>
+                        {c.address && (
+                          <span className="block truncate text-xs text-gray-400">
+                            {c.address.split('\n')[0]}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               {label('Adres')}
@@ -289,7 +334,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
             <p className="text-xs font-bold uppercase tracking-wider text-gray-300">Ürünler</p>
           </div>
 
-          {/* Table header (desktop) */}
           <div className="hidden grid-cols-[2fr_1fr_1fr_auto] gap-3 border-b border-gray-100 bg-gray-50 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:grid">
             <span>Açıklama</span>
             <span className="text-right">Adet</span>
@@ -300,7 +344,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
           <div className="divide-y divide-gray-50 px-5 py-2">
             {items.map((item, idx) => (
               <div key={item.id} className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-[2fr_80px_120px_auto] sm:items-center sm:gap-3">
-                {/* Description */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">Ürün #{idx + 1}</span>
                   <input
@@ -310,8 +353,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
                     onChange={e => updateItem(item.id, 'description', e.target.value)}
                   />
                 </div>
-
-                {/* Qty */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">Adet</span>
                   <input
@@ -322,8 +363,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
                     onChange={e => updateItem(item.id, 'qty', e.target.value)}
                   />
                 </div>
-
-                {/* Unit price */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">
                     Birim Fiyat ({S})
@@ -337,8 +376,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
                     onChange={e => updateItem(item.id, 'unitPrice', e.target.value)}
                   />
                 </div>
-
-                {/* Amount + remove */}
                 <div className="flex items-center justify-between sm:flex-col sm:items-end sm:gap-1">
                   <span className="text-sm font-semibold text-gray-700">
                     {S} {formatNumber(item.amount)}
@@ -357,18 +394,16 @@ export default function InvoiceForm({ existing, mode }: Props) {
             ))}
           </div>
 
-          {/* Add row */}
           <div className="border-t border-gray-100 px-5 py-3">
             <button
               type="button"
               onClick={addItem}
-              className="flex items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-500 transition-all hover:border-brand-300 hover:text-brand-600 w-full justify-center"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-500 transition-all hover:border-brand-300 hover:text-brand-600"
             >
               <Plus size={15} /> Ürün Ekle
             </button>
           </div>
 
-          {/* Totals */}
           <div className="border-t border-gray-100 bg-gray-50 px-5 py-4">
             <div className="ml-auto max-w-xs space-y-2">
               {hasExtras && (
@@ -408,7 +443,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
           <p className="section-title">Ek Tutarlar</p>
           <div className="space-y-4">
 
-            {/* Shipment */}
             <div>
               <label className="flex cursor-pointer items-center gap-3">
                 <input
@@ -420,7 +454,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
                 <span className="text-sm font-medium text-gray-700">Kargo ücreti var mı?</span>
               </label>
               {hasShipment && (
-                <div className="mt-2 ml-7">
+                <div className="ml-7 mt-2">
                   <input
                     type="number" min={0} step="0.01"
                     className="input-base max-w-[180px] text-right"
@@ -432,7 +466,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
               )}
             </div>
 
-            {/* Discount */}
             <div>
               <label className="flex cursor-pointer items-center gap-3">
                 <input
@@ -444,7 +477,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
                 <span className="text-sm font-medium text-gray-700">İndirim var mı?</span>
               </label>
               {hasDiscount && (
-                <div className="mt-2 ml-7">
+                <div className="ml-7 mt-2">
                   <input
                     type="number" min={0} step="0.01"
                     className="input-base max-w-[180px] text-right"
@@ -456,7 +489,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
               )}
             </div>
 
-            {/* Advance */}
             <div>
               <label className="flex cursor-pointer items-center gap-3">
                 <input
@@ -468,7 +500,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
                 <span className="text-sm font-medium text-gray-700">Avans ödeme var mı?</span>
               </label>
               {hasAdvance && (
-                <div className="mt-2 ml-7">
+                <div className="ml-7 mt-2">
                   <input
                     type="number" min={0} step="0.01"
                     className="input-base max-w-[180px] text-right"
@@ -494,7 +526,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
           </button>
 
           {termsOpen && (
-            <div className="border-t border-gray-100 px-5 pb-5 pt-4 space-y-4">
+            <div className="space-y-4 border-t border-gray-100 px-5 pb-5 pt-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   {label('Ödeme Koşulu')}
@@ -534,7 +566,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
                 </div>
               </div>
 
-              {/* Bank selection */}
               <div>
                 {label('Banka Hesabı')}
                 <div className="space-y-2">

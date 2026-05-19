@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, List, Plus } from 'lucide-react'
+import { List, Plus, Users } from 'lucide-react'
 
 export default function Navbar() {
   const path = usePathname()
@@ -26,7 +26,6 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-black tracking-tight text-brand-600">alpress</span>
           <span className="hidden text-xs font-medium text-gray-400 sm:block">
@@ -34,9 +33,9 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation */}
         <nav className="flex items-center gap-1">
           {navLink('/invoices', 'Faturalar', List)}
+          {navLink('/customers', 'Müşteriler', Users)}
           <Link
             href="/invoices/new"
             className="ml-2 flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95"

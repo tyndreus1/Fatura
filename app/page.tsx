@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileText, List, ArrowRight, Zap } from 'lucide-react'
+import { FileText, List, ArrowRight, Zap, Users } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -11,9 +11,14 @@ export default function Home() {
             <span className="text-2xl font-black tracking-tight text-brand-600">alpress</span>
             <span className="ml-2 text-sm font-medium text-gray-400">Fatura Sistemi</span>
           </div>
-          <Link href="/invoices" className="btn-secondary text-xs">
-            <List size={14} /> Tüm Faturalar
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/customers" className="btn-secondary text-xs">
+              <Users size={14} /> Müşteriler
+            </Link>
+            <Link href="/invoices" className="btn-secondary text-xs">
+              <List size={14} /> Tüm Faturalar
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -22,16 +27,16 @@ export default function Home() {
         <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600 shadow-lg">
           <Zap size={32} className="text-white" />
         </div>
-        <h1 className="mb-2 text-3xl font-black text-gray-900 text-center">Yeni Fatura Oluştur</h1>
-        <p className="mb-12 text-center text-gray-500 max-w-sm">
+        <h1 className="mb-2 text-center text-3xl font-black text-gray-900">Yeni Fatura Oluştur</h1>
+        <p className="mb-12 max-w-sm text-center text-gray-500">
           Proforma veya ticari fatura oluşturun, PDF indirin ve arşivleyin.
         </p>
 
         {/* Main CTA cards */}
         <div className="grid w-full max-w-xl gap-4 sm:grid-cols-2">
           <Link href="/invoices/new?type=proforma" className="group">
-            <div className="card h-full rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5 cursor-pointer">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl group-hover:bg-blue-200 transition-colors">
+            <div className="card h-full cursor-pointer rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl transition-colors group-hover:bg-blue-200">
                 📋
               </div>
               <h2 className="mb-1 text-lg font-bold text-gray-900">Proforma Invoice</h2>
@@ -43,8 +48,8 @@ export default function Home() {
           </Link>
 
           <Link href="/invoices/new?type=commercial" className="group">
-            <div className="card h-full rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:border-emerald-200 hover:-translate-y-0.5 cursor-pointer">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl group-hover:bg-emerald-200 transition-colors">
+            <div className="card h-full cursor-pointer rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl transition-colors group-hover:bg-emerald-200">
                 🧾
               </div>
               <h2 className="mb-1 text-lg font-bold text-gray-900">Commercial Invoice</h2>
@@ -56,14 +61,22 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Quick link */}
-        <div className="mt-8">
+        {/* Quick links */}
+        <div className="mt-8 flex items-center gap-6">
           <Link
             href="/invoices"
             className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700"
           >
             <FileText size={16} />
-            Fatura arşivine git
+            Fatura arşivi
+            <ArrowRight size={14} />
+          </Link>
+          <Link
+            href="/customers"
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+          >
+            <Users size={16} />
+            Müşteri listesi
             <ArrowRight size={14} />
           </Link>
         </div>

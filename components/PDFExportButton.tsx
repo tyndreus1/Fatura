@@ -15,7 +15,6 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
       const element = document.getElementById('invoice-preview')
       if (!element) return
 
-      // Fontların yüklenmesini bekle
       await document.fonts.ready
 
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
@@ -29,11 +28,16 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
         allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
+        windowWidth: 1280,
+        onclone: (_doc, clonedEl) => {
+          clonedEl.style.width = '794px'
+          clonedEl.style.maxWidth = '794px'
+          clonedEl.style.minWidth = '794px'
+        },
       })
 
       const imgData = canvas.toDataURL('image/jpeg', 0.97)
 
-      // A4: 210x297 mm, kenar boşlukları 10mm
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = 210
       const pageH = 297
@@ -43,12 +47,10 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
       const contentH = (canvas.height / canvas.width) * contentW
 
       if (contentH <= pageH - marginY * 2) {
-        // Tek sayfa
         pdf.addImage(imgData, 'JPEG', marginX, marginY, contentW, contentH)
       } else {
-        // Çok sayfa: sayfayı böl
         const pageContentH = pageH - marginY * 2
-        const scale = canvas.width / contentW  // px per mm
+        const scale = canvas.width / contentW
         let srcY = 0
         let remainMm = contentH
         let first = true
