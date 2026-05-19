@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
-import type { Invoice, InvoiceFormData, InvoiceRow, Customer, Product } from './types'
+import type { Invoice, InvoiceFormData, InvoiceRow, Customer, Product, BankAccountRow } from './types'
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data')
 const DB_PATH = path.join(DATA_DIR, 'invoices.db')
@@ -63,7 +63,37 @@ function getDb(): Database.Database {
       key   TEXT PRIMARY KEY,
       value TEXT DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      key            TEXT NOT NULL UNIQUE,
+      label          TEXT NOT NULL DEFAULT '',
+      currency       TEXT NOT NULL DEFAULT 'EUR',
+      account_name   TEXT DEFAULT '',
+      bank_name      TEXT DEFAULT '',
+      branch_name    TEXT DEFAULT '',
+      branch_code    TEXT DEFAULT '',
+      swift_code     TEXT DEFAULT '',
+      account_number TEXT DEFAULT '',
+      iban           TEXT DEFAULT '',
+      sort_order     INTEGER DEFAULT 0
+    );
   `)
+
+  // Seed default bank accounts once
+  const bc = _db.prepare('SELECT COUNT(*) as n FROM bank_accounts').get() as { n: number }
+  if (bc.n === 0) {
+    const ins = _db.prepare(`
+      INSERT OR IGNORE INTO bank_accounts
+        (key,label,currency,account_name,bank_name,branch_name,branch_code,swift_code,account_number,iban,sort_order)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    `)
+    ;[
+      ['akbank_eur','Akbank A.Ş. — EUR (031030)','EUR','Alpress Kalıpçılık Dan. Ith. Ihr. San. ve Tic. Ltd.Şti','Akbank A.S.','Seyitnizam','1349','AKBKTRIS','031030','TR26 0004 6013 4903 6000 0310 30',0],
+      ['akbank_eur2','Akbank A.Ş. — EUR (0031030)','EUR','Alpress Kalipcilik Dan. İth. İhr. San. ve Tic. Ltd.Şti','Akbank A.S.','Seyitnizam','1349','AKBKTRIS','0031030','TR76 0004 6013 4900 1000 0310 30',1],
+      ['akbank_usd','Akbank A.Ş. — USD','USD','Alpress Kalipcilik Dan. İth. İhr. San. ve Tic. Ltd.Şti','Akbank A.S.','Seyitnizam','1349','AKBKTRIS','0057195','TR45 0004 6013 4900 1000 0571 95',2],
+      ['emlak_eur','Emlak Katılım Bankası — EUR','EUR','Alpress Kalipcilik Dan. İth. İhr. San. ve Tic. Ltd.Şti','TURKIYE EMLAK KATILIM BANKASI','','#76','EMLATRISXXX','749803','TR35 0021 1000 0007 4980 3001 03',3],
+    ].forEach(r => ins.run(...(r as Parameters<typeof ins.run>)))
+  }
 
   return _db
 }
@@ -75,8 +105,16 @@ function rowToInvoice(row: InvoiceRow): Invoice {
 export function peekNextNumber(): string {
   const db = getDb()
   const year = new Date().getFullYear()
-  const row = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as { seq: number } | undefined
-  return `ALP${year}${String((row?.seq ?? 0) + 1).padStart(4, '0')}`
+  // Use the highest existing invoice number for this year
+  const row = db.prepare(
+    `SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ORDER BY invoice_number DESC LIMIT 1`
+  ).get(`ALP${year}%`) as { invoice_number: string } | undefined
+  if (row) {
+    const seq = parseInt(row.invoice_number.slice(7), 10)
+    if (!isNaN(seq)) return `ALP${year}${String(seq + 1).padStart(4, '0')}`
+  }
+  const counterRow = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as { seq: number } | undefined
+  return `ALP${year}${String((counterRow?.seq ?? 0) + 1).padStart(4, '0')}`
 }
 
 export function consumeNextNumber(): string {
@@ -86,6 +124,8 @@ export function consumeNextNumber(): string {
   const row = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as { seq: number }
   return `ALP${year}${String(row.seq).padStart(4, '0')}`
 }
+
+// ── Customers ────────────────────────────────────────────────────────────────
 
 export function listCustomers(): Customer[] {
   return getDb().prepare('SELECT * FROM customers ORDER BY name').all() as Customer[]
@@ -114,6 +154,8 @@ export function updateCustomer(id: number, data: { name?: string; address?: stri
 export function deleteCustomer(id: number): boolean {
   return getDb().prepare('DELETE FROM customers WHERE id = ?').run(id).changes > 0
 }
+
+// ── Products ─────────────────────────────────────────────────────────────────
 
 export function listProducts(): Product[] {
   return getDb().prepare('SELECT * FROM products ORDER BY name').all() as Product[]
@@ -158,6 +200,8 @@ export function deleteProduct(id: number): boolean {
   return getDb().prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0
 }
 
+// ── Settings ─────────────────────────────────────────────────────────────────
+
 export function getSetting(key: string): string {
   return (getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? ''
 }
@@ -165,6 +209,42 @@ export function getSetting(key: string): string {
 export function setSetting(key: string, value: string): void {
   getDb().prepare(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(key, value)
 }
+
+// ── Bank Accounts ─────────────────────────────────────────────────────────────
+
+export function listBankAccounts(): BankAccountRow[] {
+  return getDb().prepare('SELECT * FROM bank_accounts ORDER BY sort_order, key').all() as BankAccountRow[]
+}
+
+export function getBankAccountByKey(key: string): BankAccountRow | null {
+  return getDb().prepare('SELECT * FROM bank_accounts WHERE key = ?').get(key) as BankAccountRow | null
+}
+
+export function createBankAccount(data: Omit<BankAccountRow, 'id'>): BankAccountRow {
+  const db = getDb()
+  const r = db.prepare(`
+    INSERT INTO bank_accounts (key,label,currency,account_name,bank_name,branch_name,branch_code,swift_code,account_number,iban,sort_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  `).run(data.key, data.label, data.currency, data.account_name, data.bank_name, data.branch_name, data.branch_code, data.swift_code, data.account_number, data.iban, data.sort_order ?? 0)
+  return db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(r.lastInsertRowid) as BankAccountRow
+}
+
+export function updateBankAccount(id: number, data: Partial<Omit<BankAccountRow, 'id'>>): BankAccountRow | null {
+  const db = getDb()
+  const existing = db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id) as BankAccountRow | null
+  if (!existing) return null
+  const m = { ...existing, ...data }
+  db.prepare(`
+    UPDATE bank_accounts SET key=?,label=?,currency=?,account_name=?,bank_name=?,branch_name=?,branch_code=?,swift_code=?,account_number=?,iban=?,sort_order=? WHERE id=?
+  `).run(m.key, m.label, m.currency, m.account_name, m.bank_name, m.branch_name, m.branch_code, m.swift_code, m.account_number, m.iban, m.sort_order, id)
+  return db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id) as BankAccountRow
+}
+
+export function deleteBankAccount(id: number): boolean {
+  return getDb().prepare('DELETE FROM bank_accounts WHERE id = ?').run(id).changes > 0
+}
+
+// ── Invoices ──────────────────────────────────────────────────────────────────
 
 export function listInvoices(): Invoice[] {
   return getDb().prepare('SELECT * FROM invoices ORDER BY created_at DESC').all().map(r => rowToInvoice(r as InvoiceRow))

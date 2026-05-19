@@ -9,7 +9,7 @@ export interface InvoiceItem {
 
 export type InvoiceType = 'proforma' | 'commercial'
 export type Currency = 'EUR' | 'USD'
-export type BankAccountKey = 'akbank_eur' | 'akbank_usd' | 'emlak_eur' | 'akbank_eur2'
+export type BankAccountKey = string
 
 export interface Invoice {
   id: number
@@ -56,4 +56,19 @@ export interface Product {
   image_url: string
   created_at: string
   updated_at: string
+}
+
+export interface BankAccountRow {
+  id: number
+  key: string
+  label: string
+  currency: string
+  account_name: string
+  bank_name: string
+  branch_name: string
+  branch_code: string
+  swift_code: string
+  account_number: string
+  iban: string
+  sort_order: number
 }
