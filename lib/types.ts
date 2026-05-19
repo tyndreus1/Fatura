@@ -46,3 +46,13 @@ export interface Customer {
   created_at: string
   updated_at: string
 }
+
+export interface Product {
+  id: number
+  name: string
+  description: string
+  unit_price: number
+  image_url: string
+  created_at: string
+  updated_at: string
+}

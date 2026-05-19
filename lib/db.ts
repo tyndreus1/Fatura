@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
-import type { Invoice, InvoiceFormData, InvoiceRow, Customer } from './types'
+import type { Invoice, InvoiceFormData, InvoiceRow, Customer, Product } from './types'
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data')
 const DB_PATH = path.join(DATA_DIR, 'invoices.db')
@@ -38,12 +38,10 @@ function getDb(): Database.Database {
       created_at       TEXT    DEFAULT (datetime('now')),
       updated_at       TEXT    DEFAULT (datetime('now'))
     );
-
     CREATE TABLE IF NOT EXISTS counter (
       year INTEGER PRIMARY KEY,
       seq  INTEGER DEFAULT 0
     );
-
     CREATE TABLE IF NOT EXISTS customers (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT    NOT NULL UNIQUE,
@@ -52,54 +50,47 @@ function getDb(): Database.Database {
       created_at TEXT    DEFAULT (datetime('now')),
       updated_at TEXT    DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS products (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT    NOT NULL UNIQUE,
+      description TEXT    DEFAULT '',
+      unit_price  REAL    DEFAULT 0,
+      image_url   TEXT    DEFAULT '',
+      created_at  TEXT    DEFAULT (datetime('now')),
+      updated_at  TEXT    DEFAULT (datetime('now'))
+    );
   `)
 
   return _db
 }
 
 function rowToInvoice(row: InvoiceRow): Invoice {
-  return {
-    ...row,
-    items: JSON.parse(row.items || '[]'),
-  } as Invoice
+  return { ...row, items: JSON.parse(row.items || '[]') } as Invoice
 }
-
-// ─── Invoice number ───────────────────────────────────────────────────────────
 
 export function peekNextNumber(): string {
   const db = getDb()
   const year = new Date().getFullYear()
-  const row = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as
-    | { seq: number }
-    | undefined
-  const next = (row?.seq ?? 0) + 1
-  return `ALP${year}${String(next).padStart(4, '0')}`
+  const row = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as { seq: number } | undefined
+  return `ALP${year}${String((row?.seq ?? 0) + 1).padStart(4, '0')}`
 }
 
 export function consumeNextNumber(): string {
   const db = getDb()
   const year = new Date().getFullYear()
-  db.prepare(`
-    INSERT INTO counter (year, seq) VALUES (?, 1)
-    ON CONFLICT(year) DO UPDATE SET seq = seq + 1
-  `).run(year)
+  db.prepare(`INSERT INTO counter (year, seq) VALUES (?, 1) ON CONFLICT(year) DO UPDATE SET seq = seq + 1`).run(year)
   const row = db.prepare('SELECT seq FROM counter WHERE year = ?').get(year) as { seq: number }
   return `ALP${year}${String(row.seq).padStart(4, '0')}`
 }
 
-// ─── Customers ────────────────────────────────────────────────────────────────
-
 export function listCustomers(): Customer[] {
-  const db = getDb()
-  return db.prepare('SELECT * FROM customers ORDER BY name').all() as Customer[]
+  return getDb().prepare('SELECT * FROM customers ORDER BY name').all() as Customer[]
 }
 
 export function upsertCustomer(name: string, address: string, contact: string): void {
   if (!name.trim()) return
-  const db = getDb()
-  db.prepare(`
-    INSERT INTO customers (name, address, contact)
-    VALUES (?, ?, ?)
+  getDb().prepare(`
+    INSERT INTO customers (name, address, contact) VALUES (?, ?, ?)
     ON CONFLICT(name) DO UPDATE SET
       address    = CASE WHEN excluded.address != '' THEN excluded.address ELSE address END,
       contact    = CASE WHEN excluded.contact != '' THEN excluded.contact ELSE contact END,
@@ -107,46 +98,74 @@ export function upsertCustomer(name: string, address: string, contact: string): 
   `).run(name.trim(), address.trim(), contact.trim())
 }
 
-export function updateCustomer(
-  id: number,
-  data: { name?: string; address?: string; contact?: string }
-): Customer | null {
+export function updateCustomer(id: number, data: { name?: string; address?: string; contact?: string }): Customer | null {
   const db = getDb()
   const existing = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Customer | undefined
   if (!existing) return null
-  const merged = { ...existing, ...data }
-  db.prepare(`
-    UPDATE customers SET name = ?, address = ?, contact = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `).run(merged.name, merged.address, merged.contact, id)
+  const m = { ...existing, ...data }
+  db.prepare(`UPDATE customers SET name = ?, address = ?, contact = ?, updated_at = datetime('now') WHERE id = ?`).run(m.name, m.address, m.contact, id)
   return db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as Customer
 }
 
 export function deleteCustomer(id: number): boolean {
-  const db = getDb()
-  const result = db.prepare('DELETE FROM customers WHERE id = ?').run(id)
-  return result.changes > 0
+  return getDb().prepare('DELETE FROM customers WHERE id = ?').run(id).changes > 0
 }
 
-// ─── Invoice CRUD ─────────────────────────────────────────────────────────────
+export function listProducts(): Product[] {
+  return getDb().prepare('SELECT * FROM products ORDER BY name').all() as Product[]
+}
+
+export function getProduct(id: number): Product | null {
+  return getDb().prepare('SELECT * FROM products WHERE id = ?').get(id) as Product | null
+}
+
+export function createProduct(data: { name: string; description: string; unit_price: number }): Product {
+  const db = getDb()
+  const r = db.prepare(`INSERT INTO products (name, description, unit_price) VALUES (?, ?, ?)`).run(data.name.trim(), data.description.trim(), data.unit_price)
+  return getProduct(r.lastInsertRowid as number)!
+}
+
+export function updateProduct(id: number, data: { name?: string; description?: string; unit_price?: number }): Product | null {
+  const existing = getProduct(id)
+  if (!existing) return null
+  const m = { ...existing, ...data }
+  getDb().prepare(`UPDATE products SET name = ?, description = ?, unit_price = ?, updated_at = datetime('now') WHERE id = ?`).run(m.name, m.description, m.unit_price, id)
+  return getProduct(id)
+}
+
+export function setProductImage(id: number, filename: string): Product | null {
+  const existing = getProduct(id)
+  if (!existing) return null
+  if (existing.image_url) {
+    const old = path.join(DATA_DIR, 'uploads', existing.image_url)
+    if (fs.existsSync(old)) { try { fs.unlinkSync(old) } catch {} }
+  }
+  getDb().prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`).run(filename, id)
+  return getProduct(id)
+}
+
+export function deleteProduct(id: number): boolean {
+  const existing = getProduct(id)
+  if (!existing) return false
+  if (existing.image_url) {
+    const img = path.join(DATA_DIR, 'uploads', existing.image_url)
+    if (fs.existsSync(img)) { try { fs.unlinkSync(img) } catch {} }
+  }
+  return getDb().prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0
+}
 
 export function listInvoices(): Invoice[] {
-  const db = getDb()
-  const rows = db
-    .prepare(`SELECT * FROM invoices ORDER BY created_at DESC`)
-    .all() as InvoiceRow[]
-  return rows.map(rowToInvoice)
+  return getDb().prepare('SELECT * FROM invoices ORDER BY created_at DESC').all().map(r => rowToInvoice(r as InvoiceRow))
 }
 
 export function getInvoice(id: number): Invoice | null {
-  const db = getDb()
-  const row = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id) as InvoiceRow | undefined
+  const row = getDb().prepare('SELECT * FROM invoices WHERE id = ?').get(id) as InvoiceRow | undefined
   return row ? rowToInvoice(row) : null
 }
 
 export function createInvoice(data: InvoiceFormData): Invoice {
   const db = getDb()
-  const stmt = db.prepare(`
+  const r = db.prepare(`
     INSERT INTO invoices (
       invoice_number, invoice_type, currency, bank_account, invoice_date,
       customer_name, customer_address, customer_contact,
@@ -158,49 +177,29 @@ export function createInvoice(data: InvoiceFormData): Invoice {
       @items, @shipment_cost, @discount, @advance_payment,
       @payment_term, @shipment_term, @delivery_time, @notes
     )
-  `)
-  const result = stmt.run({
-    ...data,
-    items: JSON.stringify(data.items),
-  })
+  `).run({ ...data, items: JSON.stringify(data.items) })
   upsertCustomer(data.customer_name, data.customer_address ?? '', data.customer_contact ?? '')
-  return getInvoice(result.lastInsertRowid as number)!
+  return getInvoice(r.lastInsertRowid as number)!
 }
 
 export function updateInvoice(id: number, data: Partial<InvoiceFormData>): Invoice | null {
-  const db = getDb()
   const existing = getInvoice(id)
   if (!existing) return null
-
-  const merged = { ...existing, ...data }
-  db.prepare(`
+  const m = { ...existing, ...data }
+  getDb().prepare(`
     UPDATE invoices SET
-      invoice_number   = @invoice_number,
-      invoice_type     = @invoice_type,
-      currency         = @currency,
-      bank_account     = @bank_account,
-      invoice_date     = @invoice_date,
-      customer_name    = @customer_name,
-      customer_address = @customer_address,
-      customer_contact = @customer_contact,
-      items            = @items,
-      shipment_cost    = @shipment_cost,
-      discount         = @discount,
-      advance_payment  = @advance_payment,
-      payment_term     = @payment_term,
-      shipment_term    = @shipment_term,
-      delivery_time    = @delivery_time,
-      notes            = @notes,
-      updated_at       = datetime('now')
+      invoice_number = @invoice_number, invoice_type = @invoice_type,
+      currency = @currency, bank_account = @bank_account, invoice_date = @invoice_date,
+      customer_name = @customer_name, customer_address = @customer_address, customer_contact = @customer_contact,
+      items = @items, shipment_cost = @shipment_cost, discount = @discount, advance_payment = @advance_payment,
+      payment_term = @payment_term, shipment_term = @shipment_term, delivery_time = @delivery_time,
+      notes = @notes, updated_at = datetime('now')
     WHERE id = @id
-  `).run({ ...merged, items: JSON.stringify(merged.items), id })
-
-  upsertCustomer(merged.customer_name, merged.customer_address ?? '', merged.customer_contact ?? '')
+  `).run({ ...m, items: JSON.stringify(m.items), id })
+  upsertCustomer(m.customer_name, m.customer_address ?? '', m.customer_contact ?? '')
   return getInvoice(id)
 }
 
 export function deleteInvoice(id: number): boolean {
-  const db = getDb()
-  const result = db.prepare('DELETE FROM invoices WHERE id = ?').run(id)
-  return result.changes > 0
+  return getDb().prepare('DELETE FROM invoices WHERE id = ?').run(id).changes > 0
 }
