@@ -13,7 +13,12 @@ export default function SettingsPage() {
   const logoRef  = useRef<HTMLInputElement>(null)
   const stampRef = useRef<HTMLInputElement>(null)
 
-  async function upload(endpoint: string, file: File, set: React.Dispatch<React.SetStateAction<UploadState>>, ref: React.RefObject<HTMLInputElement | null>) {
+  async function upload(
+    endpoint: string,
+    file: File,
+    set: React.Dispatch<React.SetStateAction<UploadState>>,
+    ref: React.RefObject<HTMLInputElement | null>
+  ) {
     set(s => ({ ...s, uploading: true, uploaded: false, error: '' }))
     const form = new FormData()
     form.append('file', file)
@@ -52,9 +57,14 @@ export default function SettingsPage() {
       <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-sm font-medium transition-all ${
         state.uploading ? 'cursor-not-allowed border-gray-200 text-gray-400' : 'border-brand-300 text-brand-600 hover:bg-brand-50'
       }`}>
-        <input ref={inputRef} type="file" accept={accept} className="hidden"
+        <input
+          ref={inputRef as React.LegacyRef<HTMLInputElement>}
+          type="file"
+          accept={accept}
+          className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) upload(endpoint, f, set, inputRef) }}
-          disabled={state.uploading} />
+          disabled={state.uploading}
+        />
         {state.uploading ? 'Yükleniyor...' : <><Upload size={16} /> Yükle / Değiştir</>}
       </label>
       {state.uploaded && (
