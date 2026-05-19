@@ -22,21 +22,21 @@ export default function InvoicePreview({ invoice }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[794px] rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden print:shadow-none print:border-0 print:rounded-none">
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between">
-        {/* Logo — flush to card top-left corner, 0 margin */}
+      {/* ── Header: 2cm top offset, logo 90mm wide ── */}
+      <div className="flex items-start justify-between pt-[76px]">
+        {/* Logo — flush to left edge */}
         <div>
           {!logoError && (
             <img
               src="/api/settings/logo"
               alt="Logo"
-              className="block max-h-[88px] max-w-[220px] w-auto object-contain"
+              className="block w-[340px] h-auto"
               onError={() => setLogoError(true)}
             />
           )}
         </div>
-        {/* Invoice title */}
-        <div className="px-8 pt-6 pb-4 text-2xl font-black italic text-brand-600">
+        {/* Invoice title — right side, bottom-aligned with logo */}
+        <div className="px-8 pb-4 text-2xl font-black italic text-brand-600">
           {isProforma ? 'Proforma Invoice' : 'Invoice'}
         </div>
       </div>
