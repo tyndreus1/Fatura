@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronDown, ChevronUp, Save, ArrowLeft, Package } from 'lucide-react'
-import type { Invoice, InvoiceItem, InvoiceType, Currency, BankAccountKey, Customer, Product } from '@/lib/types'
-import { BANK_ACCOUNTS, getBanksForCurrency, getDefaultBank } from '@/lib/bank-accounts'
+import type { Invoice, InvoiceItem, InvoiceType, Currency, Customer, Product, BankAccountRow } from '@/lib/types'
+import { BANK_ACCOUNTS, getBanksForCurrency } from '@/lib/bank-accounts'
 import { calcTotals, formatNumber, todayISO, newItemId } from '@/lib/utils'
 
 interface Props { existing?: Invoice; mode: 'create' | 'edit' }
@@ -17,7 +17,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
 
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(existing?.invoice_type ?? 'proforma')
   const [currency, setCurrency]       = useState<Currency>(existing?.currency ?? 'EUR')
-  const [bankAccount, setBankAccount] = useState<BankAccountKey>(existing?.bank_account ?? 'akbank_eur')
+  const [bankAccount, setBankAccount] = useState<string>(existing?.bank_account ?? 'akbank_eur')
   const [invoiceNumber, setInvoiceNumber] = useState(existing?.invoice_number ?? '')
   const [invoiceDate, setInvoiceDate]     = useState(existing?.invoice_date ?? todayISO())
   const [customerName,    setCustomerName]    = useState(existing?.customer_name ?? '')
@@ -42,6 +42,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
   const [products,             setProducts]             = useState<Product[]>([])
   const [activeItemSuggestion, setActiveItemSuggestion] = useState<string | null>(null)
+  const [bankAccounts,         setBankAccounts]         = useState<BankAccountRow[]>([])
 
   useEffect(() => {
     if (mode === 'create') fetch('/api/next-number').then(r => r.json()).then(d => setInvoiceNumber(d.number))
@@ -50,12 +51,19 @@ export default function InvoiceForm({ existing, mode }: Props) {
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {})
     fetch('/api/products').then(r => r.json()).then(setProducts).catch(() => {})
+    fetch('/api/bank-accounts').then(r => r.json()).then(setBankAccounts).catch(() => {})
   }, [])
 
+  // When currency changes, switch bank if current one is wrong currency
   useEffect(() => {
-    const current = BANK_ACCOUNTS[bankAccount]
-    if (current.currency !== currency) setBankAccount(getDefaultBank(currency))
-  }, [currency]) // eslint-disable-line
+    const validKeys = (bankAccounts.length > 0
+      ? bankAccounts.filter(b => b.currency === currency)
+      : getBanksForCurrency(currency).map(k => ({ key: k }))
+    ).map(b => b.key)
+    if (validKeys.length > 0 && !validKeys.includes(bankAccount)) {
+      setBankAccount(validKeys[0])
+    }
+  }, [currency, bankAccounts]) // eslint-disable-line
 
   const filteredCustomers = customers.filter(c =>
     customerName.trim().length > 0 && c.name.toLowerCase().includes(customerName.toLowerCase())
@@ -88,6 +96,11 @@ export default function InvoiceForm({ existing, mode }: Props) {
   const { subtotal, grandTotal } = calcTotals(items, hasShipment ? shipmentCost : 0, hasDiscount ? discount : 0, hasAdvance ? advancePayment : 0)
   const hasExtras = (hasShipment && shipmentCost > 0) || (hasDiscount && discount > 0) || (hasAdvance && advancePayment > 0)
   const S = currency === 'EUR' ? '€' : '$'
+
+  // Build bank list for current currency (dynamic with static fallback)
+  const banksForCurrency: { key: string; label: string; iban: string }[] = bankAccounts.length > 0
+    ? bankAccounts.filter(b => b.currency === currency).map(b => ({ key: b.key, label: b.label, iban: b.iban }))
+    : getBanksForCurrency(currency).map(k => ({ key: k, label: BANK_ACCOUNTS[k].label, iban: BANK_ACCOUNTS[k].iban }))
 
   async function handleSave() {
     if (!customerName.trim()) { setError('Müşteri adı zorunludur.'); return }
@@ -197,7 +210,6 @@ export default function InvoiceForm({ existing, mode }: Props) {
           <div className="divide-y divide-gray-50 px-5 py-2">
             {items.map((item, idx) => (
               <div key={item.id} className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-[2fr_80px_120px_auto] sm:items-center sm:gap-3">
-                {/* Description + product autocomplete */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">Ürün #{idx + 1}</span>
                   <div className="relative">
@@ -236,17 +248,14 @@ export default function InvoiceForm({ existing, mode }: Props) {
                     )}
                   </div>
                 </div>
-                {/* Qty */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">Adet</span>
                   <input type="number" min={0} className="input-base text-right" value={item.qty || ''} onChange={e => updateItem(item.id, 'qty', e.target.value)} />
                 </div>
-                {/* Unit price */}
                 <div>
                   <span className="mb-1 block text-xs font-medium text-gray-400 sm:hidden">Birim Fiyat ({S})</span>
                   <input type="number" min={0} step="0.01" className="input-base text-right" value={item.unitPrice || ''} onChange={e => updateItem(item.id, 'unitPrice', e.target.value)} />
                 </div>
-                {/* Amount + remove */}
                 <div className="flex items-center justify-between sm:flex-col sm:items-end sm:gap-1">
                   <span className="text-sm font-semibold text-gray-700">{S} {formatNumber(item.amount)}</span>
                   {items.length > 1 && (
@@ -311,15 +320,12 @@ export default function InvoiceForm({ existing, mode }: Props) {
               <div>
                 {label('Banka Hesabı')}
                 <div className="space-y-2">
-                  {getBanksForCurrency(currency).map(key => {
-                    const b = BANK_ACCOUNTS[key]
-                    return (
-                      <label key={key} className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3 transition-all ${ bankAccount === key ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300' }`}>
-                        <input type="radio" name="bank" className="mt-0.5 accent-brand-600" checked={bankAccount === key} onChange={() => setBankAccount(key)} />
-                        <div><p className="text-sm font-semibold text-gray-800">{b.label}</p><p className="text-xs text-gray-500">IBAN: {b.iban}</p></div>
-                      </label>
-                    )
-                  })}
+                  {banksForCurrency.map(b => (
+                    <label key={b.key} className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3 transition-all ${ bankAccount === b.key ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300' }`}>
+                      <input type="radio" name="bank" className="mt-0.5 accent-brand-600" checked={bankAccount === b.key} onChange={() => setBankAccount(b.key)} />
+                      <div><p className="text-sm font-semibold text-gray-800">{b.label}</p><p className="text-xs text-gray-500">IBAN: {b.iban}</p></div>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
