@@ -4,6 +4,7 @@ export interface InvoiceItem {
   qty: number
   unitPrice: number
   amount: number
+  image_url?: string
 }
 
 export type InvoiceType = 'proforma' | 'commercial'

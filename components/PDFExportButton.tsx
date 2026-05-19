@@ -33,6 +33,10 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
           clonedEl.style.width = '794px'
           clonedEl.style.maxWidth = '794px'
           clonedEl.style.minWidth = '794px'
+          clonedEl.style.borderRadius = '0'
+          clonedEl.style.boxShadow = 'none'
+          clonedEl.style.border = 'none'
+          clonedEl.style.margin = '0'
         },
       })
 
@@ -41,8 +45,8 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = 210
       const pageH = 297
-      const marginX = 10
-      const marginY = 10
+      const marginX = 0
+      const marginY = 0
       const contentW = pageW - marginX * 2
       const contentH = (canvas.height / canvas.width) * contentW
 

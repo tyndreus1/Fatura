@@ -213,7 +213,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
                               setItems(prev => prev.map(it => {
                                 if (it.id !== item.id) return it
                                 const price = p.unit_price
-                                return { ...it, description: p.name, unitPrice: price, amount: Number((it.qty * price).toFixed(2)) }
+                                return { ...it, description: p.name, unitPrice: price, amount: Number((it.qty * price).toFixed(2)), image_url: p.image_url || undefined }
                               }))
                               setActiveItemSuggestion(null)
                             }}
@@ -297,7 +297,7 @@ export default function InvoiceForm({ existing, mode }: Props) {
         {/* Terms */}
         <div className="card overflow-hidden">
           <button type="button" onClick={() => setTermsOpen(v => !v)} className="flex w-full items-center justify-between px-5 py-4 text-left">
-            <p className="section-title mb-0">Koşullar & Banka</p>
+            <p className="section-title mb-0">Koşullar &amp; Banka</p>
             {termsOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
           </button>
           {termsOpen && (

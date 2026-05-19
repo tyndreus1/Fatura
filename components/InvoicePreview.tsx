@@ -1,3 +1,5 @@
+'use client'
+import { useState } from 'react'
 import type { Invoice } from '@/lib/types'
 import { BANK_ACCOUNTS } from '@/lib/bank-accounts'
 import { formatNumber, formatDate, calcTotals } from '@/lib/utils'
@@ -5,6 +7,7 @@ import { formatNumber, formatDate, calcTotals } from '@/lib/utils'
 interface Props { invoice: Invoice }
 
 export default function InvoicePreview({ invoice }: Props) {
+  const [logoError, setLogoError] = useState(false)
   const bank = BANK_ACCOUNTS[invoice.bank_account]
   const S = invoice.currency === 'EUR' ? '€' : '$'
   const isProforma = invoice.invoice_type === 'proforma'
@@ -18,18 +21,22 @@ export default function InvoicePreview({ invoice }: Props) {
     invoice.shipment_cost > 0 || invoice.discount > 0 || invoice.advance_payment > 0
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+    <div className="mx-auto w-full max-w-[794px] rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden print:shadow-none print:border-0 print:rounded-none">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between px-8 pt-8 pb-4">
-        {/* Logo */}
+      <div className="flex items-start justify-between">
+        {/* Logo — flush to card top-left corner, 0 margin */}
         <div>
-          <div className="text-2xl font-black tracking-wide text-brand-600">alpress</div>
-          <div className="mt-0.5 text-[9px] leading-tight text-gray-400 uppercase tracking-wider">
-            Kalıpçılık Danışmanlık<br />Ith. Ihr. San. ve Tic. Ltd. Şti.
-          </div>
+          {!logoError && (
+            <img
+              src="/api/settings/logo"
+              alt="Logo"
+              className="block max-h-[88px] max-w-[220px] w-auto object-contain"
+              onError={() => setLogoError(true)}
+            />
+          )}
         </div>
-        {/* Title */}
-        <div className="text-2xl font-black italic text-brand-600">
+        {/* Invoice title */}
+        <div className="px-8 pt-6 pb-4 text-2xl font-black italic text-brand-600">
           {isProforma ? 'Proforma Invoice' : 'Invoice'}
         </div>
       </div>
@@ -79,7 +86,18 @@ export default function InvoicePreview({ invoice }: Props) {
             {invoice.items.map((item, i) => (
               <tr key={item.id || i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
                 <td className="py-3 px-3 font-bold align-top">{item.qty}</td>
-                <td className="py-3 px-3 font-bold align-top whitespace-pre-wrap">{item.description}</td>
+                <td className="py-3 px-3 align-top">
+                  <div className="flex items-start gap-2">
+                    {item.image_url && (
+                      <img
+                        src={`/api/uploads/${item.image_url}`}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded object-cover"
+                      />
+                    )}
+                    <span className="font-bold whitespace-pre-wrap">{item.description}</span>
+                  </div>
+                </td>
                 <td className="py-3 px-3 text-right align-top">
                   {S} {formatNumber(item.unitPrice)}
                 </td>
@@ -143,7 +161,7 @@ export default function InvoicePreview({ invoice }: Props) {
         {/* Terms */}
         <div>
           <div className="mb-2 rounded bg-brand-600 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-            Terms & Conditions
+            Terms &amp; Conditions
           </div>
           <div className="space-y-1 text-[10px]">
             {invoice.payment_term && (
@@ -183,7 +201,7 @@ export default function InvoicePreview({ invoice }: Props) {
             Account Details
           </div>
           <div className="space-y-1 text-[10px]">
-            {[
+            {([
               ['Account Name', bank.accountName],
               ['Bank Name',    bank.bankName],
               ...(bank.branchName ? [['Branch Name', bank.branchName]] : []),
@@ -191,7 +209,7 @@ export default function InvoicePreview({ invoice }: Props) {
               ['Swift Code',     bank.swiftCode],
               ['Account Number', bank.accountNumber],
               ['IBAN NO',        bank.iban],
-            ].map(([k, v]) => (
+            ] as [string, string][]).map(([k, v]) => (
               <div key={k} className="flex gap-1">
                 <span className="font-bold w-24 shrink-0">{k}</span>
                 <span className="text-gray-600">: {v}</span>

@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { List, Plus, Users, Package } from 'lucide-react'
+import { List, Plus, Users, Package, Settings } from 'lucide-react'
 
 export default function Navbar() {
   const path = usePathname()
@@ -27,6 +27,7 @@ export default function Navbar() {
           {navLink('/invoices', 'Faturalar', List)}
           {navLink('/customers', 'Müşteriler', Users)}
           {navLink('/products', 'Ürünler', Package)}
+          {navLink('/settings', 'Ayarlar', Settings)}
           <Link href="/invoices/new" className="ml-2 flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95">
             <Plus size={15} />
             <span className="hidden sm:inline">Yeni Fatura</span>

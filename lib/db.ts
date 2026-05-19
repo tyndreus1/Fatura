@@ -59,6 +59,10 @@ function getDb(): Database.Database {
       created_at  TEXT    DEFAULT (datetime('now')),
       updated_at  TEXT    DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT DEFAULT ''
+    );
   `)
 
   return _db
@@ -152,6 +156,14 @@ export function deleteProduct(id: number): boolean {
     if (fs.existsSync(img)) { try { fs.unlinkSync(img) } catch {} }
   }
   return getDb().prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0
+}
+
+export function getSetting(key: string): string {
+  return (getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? ''
+}
+
+export function setSetting(key: string, value: string): void {
+  getDb().prepare(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(key, value)
 }
 
 export function listInvoices(): Invoice[] {
