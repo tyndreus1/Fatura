@@ -40,46 +40,18 @@ export default function PDFExportButton({ invoiceNumber }: Props) {
         },
       })
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.97)
-
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      // Dynamic page height — content always fits on one page
       const pageW = 210
-      const pageH = 297
-      const marginX = 0
-      const marginY = 0
-      const contentW = pageW - marginX * 2
-      const contentH = (canvas.height / canvas.width) * contentW
+      const pageH = Math.ceil((canvas.height / canvas.width) * pageW)
 
-      if (contentH <= pageH - marginY * 2) {
-        pdf.addImage(imgData, 'JPEG', marginX, marginY, contentW, contentH)
-      } else {
-        const pageContentH = pageH - marginY * 2
-        const scale = canvas.width / contentW
-        let srcY = 0
-        let remainMm = contentH
-        let first = true
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pageW, pageH],
+      })
 
-        while (remainMm > 0) {
-          const sliceMm = Math.min(remainMm, pageContentH)
-          const slicePx = Math.round(sliceMm * scale)
-
-          const sliceCanvas = document.createElement('canvas')
-          sliceCanvas.width = canvas.width
-          sliceCanvas.height = slicePx
-          const ctx = sliceCanvas.getContext('2d')!
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
-          ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
-
-          if (!first) pdf.addPage()
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.97), 'JPEG', marginX, marginY, contentW, sliceMm)
-
-          srcY += slicePx
-          remainMm -= sliceMm
-          first = false
-        }
-      }
-
+      const imgData = canvas.toDataURL('image/jpeg', 0.97)
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH)
       pdf.save(`${invoiceNumber}.pdf`)
     } catch (err) {
       console.error('PDF hatası:', err)

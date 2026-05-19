@@ -68,7 +68,7 @@ export default function InvoicePreview({ invoice, bankData }: Props) {
         </div>
       </div>
 
-      {/* ── Table — 1cm lower, thinner header band ── */}
+      {/* ── Table ── */}
       <div className="px-8 mt-[38px]">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -124,10 +124,10 @@ export default function InvoicePreview({ invoice, bankData }: Props) {
         </div>
       </div>
 
-      {/* ── Spacer — pushes everything below to the bottom of the A4 page ── */}
+      {/* ── Spacer ── */}
       <div className="flex-1" />
 
-      {/* ── Stamp / Kaşe — 40mm wide, right-aligned, z-10 so it appears above footer bands ── */}
+      {/* ── Stamp / Kaşe ── */}
       <div className="relative z-10 flex justify-end px-8 pb-2">
         {!stampError && (
           <img
@@ -139,7 +139,7 @@ export default function InvoicePreview({ invoice, bankData }: Props) {
         )}
       </div>
 
-      {/* ── Thank you — dark gray ── */}
+      {/* ── Thank you ── */}
       <div className="px-8 pt-2 pb-2">
         <p className="font-black text-gray-600 text-sm">Thank You For Choosing ALPRESS</p>
       </div>
@@ -149,7 +149,8 @@ export default function InvoicePreview({ invoice, bankData }: Props) {
       {/* ── Footer: Terms + Bank ── */}
       <div className="grid grid-cols-2 gap-4 px-8 pt-4 pb-6">
         <div>
-          <div className="mb-2 flex h-6 items-center rounded bg-brand-600 px-2 text-[10px] font-black tracking-wider text-white">
+          {/* padding-based centering is reliable across browser render and html2canvas */}
+          <div className="mb-2 rounded bg-brand-600 px-2 py-1.5 text-[10px] font-black leading-none tracking-wider text-white">
             TERMS &amp; CONDITIONS
           </div>
           <div className="space-y-1 text-[10px]">
@@ -183,7 +184,7 @@ export default function InvoicePreview({ invoice, bankData }: Props) {
         </div>
 
         <div>
-          <div className="mb-2 flex h-6 items-center rounded bg-brand-600 px-2 text-[10px] font-black tracking-wider text-white">
+          <div className="mb-2 rounded bg-brand-600 px-2 py-1.5 text-[10px] font-black leading-none tracking-wider text-white">
             ACCOUNT DETAILS
           </div>
           <div className="space-y-1 text-[10px]">
